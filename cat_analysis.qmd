@@ -1,10 +1,10 @@
 ---
 title: "Weight Trends and Litter Box Usage Patterns for the Morache Clowder"
-subtitle: "November 5th - December 2nd, 2024"
+subtitle: "November 5th - December 26th, 2024"
 format: html
 ---
 
-**Prepared by:** 
+**Author:** 
 
 Mathias MH Morache | Software Developer & Cat Enthusiast
 
@@ -23,12 +23,13 @@ library(lubridate)
 library(kableExtra)
 library(tidyr)
 library(reticulate)
+library(moments)
 
 ```
 
 ## Overview
 
-This report analyzes weight trends and litter box usage patterns for each of my four cats. The data was collected from a CSV exported from a [Litter-Robot 4](https://www.litter-robot.com/) automatic litter box between November 5th and December 2nd, 2024. 
+This report analyzes weight trends and litter box usage patterns for each of my four cats. The data was collected from a [Litter-Robot 4](https://www.litter-robot.com/) automatic litter box between November 5th and December 26th, 2024. 
 
 :::{#fig-cats layout-ncol="4"}
 :::{#fig-biralo}
@@ -58,18 +59,17 @@ Frankie
 The following considerations should be noted:
 
 * **Scale Precision:** The precision and consistency of the Litter-Robot's scale is unknown. However, I did not observe any glaringly inaccurate readings collected under normal circumstances.
-* **Cat Identification:**  Recordings are attributed to specific cats based on weight ranges, assuming each cat maintains a distinct weight profile. Gilbert and Frankie are the closest to overlapping in ranges, but this did not appear to happen. Unfortunately, cat identification information is not exported in the CSV so must be calculated again during the data cleaning.
+* **Cat Identification:**  Recordings are attributed to specific cats based on weight ranges, assuming each cat maintains a distinct weight profile. Gilbert and Frankie are the closest to overlapping in ranges, but this did not appear to happen. Although the Litter-Robot uses an "advanced cluster algorithm" to identify cats, this information is not exported.
 * **Outlier Removal:**  Extreme weight outliers, due to erroneously recorded events such as litter refilling and maintenance, have been removed from the dataset.
 * **Data Consolidation:** Consecutive weight recordings within 15-minute intervals have been averaged to reduce noise and simplify analysis.
-* **Relative Scale:** From my [research](https://www.bayshorelovespets.com/How-Often-Should-a-Healthy-Cat-Use-Its-Litter-Box--1-13319.html), a healthy cat typically uses the litter box 3-5 times per day which translates to around 21-35 times per week. However, I am a code monkey, not a veterinarian, so this assumption may not be accurate.
-* **Limited Scope:** The Litter-Robot only stores data for the previous 30 days, so the trends shown may not be indicative of larger patterns.
+
 
 ### Cat Profiles
 
 All of my cats share these characteristics:
 
 * **Indoor:** They live exclusively indoors.
-* **Diet:** Their diet consists primarily of wet food (Friskies 5.5 oz cans), typically consuming 4-6 cans per day, supplemented with dry treats (Temptations, Friskies).
+* **Diet:** Their diet consists primarily of wet food (Friskies 5.5 oz cans), typically consuming 4-6 cans per day, supplemented with dry treats (Temptations, Friskies), and bonito flakes (鰹節, *katsuobushi*, AKA skipjack tuna).
 * **Sterilization:** All cats are spayed or neutered.
 * **Birthdate:** With the exception of Gilbert, all birthdates are approximate, based on the best guess of the intial veterinarian who treated the cat after adoption.
 
@@ -82,7 +82,7 @@ cat_profiles <- data.frame(
   Cat = c("Gilbert", "Speck", "Catness", "Frankie"),
   Birthdate = c("2013-07-27", "2017-04-15", "2020-07-15", "2021-11-15"),
   Sex = c("Male", "Female", "Male", "Male"),
-  "Health_Issues" = c("Hyperthyroid, tooth decay, vomiting (chronic)", "tooth decay, diarrhea (chronic)", "None", "None")
+  "Health_Issues" = c("Hyperthyroid, vomiting (chronic)", "tooth decay, diarrhea (chronic)", "None", "None")
 )
 
 # Convert birthdate to date
@@ -128,24 +128,29 @@ cat_data <- read.csv("cat_weights.csv")
 cat_data$Timestamp <- ymd_hms(cat_data$Timestamp)
 
 # Set date range
-# TODO: confirm if end_date values after 00:00 are getting cut off
-start_date <- ymd("2024-11-05")
-end_date <- ymd("2024-12-02")
-num_weeks <- as.numeric(difftime(end_date, start_date, units = "weeks"))
+start_date <- min(cat_data$Timestamp) %>% as_date()
+end_date <- max(cat_data$Timestamp) %>% as_date()
+num_weeks <- interval(start_date, end_date) %/% weeks(1) 
 
 # Add weekly data
 cat_data$Week <- floor(as.numeric(difftime(cat_data$Timestamp, start_date, units = "days")) / 7) + 1
 cat_data$Weekday <- wday(cat_data$Timestamp)
 
-# Summary stats for each cat
-cat_summary <- cat_data %>%
+cat_summary_weight <- cat_data %>%
   group_by(Cat) %>%
   summarize(
-    Min_Weight = min(Weight),
-    Max_Weight = max(Weight),
-    Avg_Weight = round(mean(Weight), 1),
-    Median_Weight = median(Weight),
-    SD_Weight = round(sd(Weight), 2),
+    Min = min(Weight),
+    Max = max(Weight),
+    Avg = round(mean(Weight), 1),
+    Med = median(Weight),
+    SD = round(sd(Weight), 2),
+    Skew = round(skewness(Weight), 2),
+    Kurt = round(kurtosis(Weight), 2)
+  )
+
+cat_summary_visits <- cat_data %>%
+  group_by(Cat) %>%
+  summarize(
     Total_Visits = n(),
     Weekly_Visits = round(Total_Visits / num_weeks, 1)
   )
@@ -157,7 +162,7 @@ weekly_stats <- cat_data %>%
   summarize(
     Avg_Weekly_Weight = round(mean(Weight), 1),
     Total_Weekly_Visits = n(),
-    Mean_Daily_Visits = round(Total_Weekly_Visits / 7, 1),
+    Mean_Daily_Visits = round(Total_Weekly_Visits / 7, 2),
     .groups = "drop"
   )
 
@@ -170,12 +175,21 @@ cat_list <- unique(weekly_stats$Cat)
 
 ## Summary Statistics
 
-Key statistics for each cat's weight and litter box usage are summarized in the following table and plots.
+Key statistics for each cat's weight and litter box usage are summarized in the following tables and plots.
 
-```{r, echo = FALSE, summary-table}
+```{r, echo = FALSE, summary-table-weight}
 
 # Basic stats
-kable(cat_summary, caption = "Summary Statistics per Cat")
+kable(cat_summary_weight, caption = "Weight Summary Statistics per Cat")
+
+```
+
+<br>
+
+```{r, echo = FALSE, summary-table-visits}
+
+# Basic stats
+kable(cat_summary_visits, caption = "Litter Box Visit Frequency per Cat")
 
 ```
 
@@ -187,9 +201,11 @@ kable(cat_summary, caption = "Summary Statistics per Cat")
 ggplot(cat_data, aes(x = Timestamp, y = Weight, color = Cat)) +
   geom_smooth(se = FALSE, method = "loess", span = 0.3, formula = 'y ~ x') +
   labs(title = "Weight Over Time for Each Cat", x = "Timestamp", y = "Weight") +
-  facet_wrap(~Cat, scales = "free_y") +
+  #facet_wrap(~Cat, scales = "free_y") +
+  facet_wrap(~Cat, scales = "fixed") +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.position = "bottom")
 
 ```
 
@@ -199,21 +215,12 @@ ggplot(cat_data, aes(x = Timestamp, y = Weight, color = Cat)) +
 ggplot(cat_data, aes(x = Weight, fill = Cat)) +
   geom_density(alpha = 0.7) +
   labs(title = "Distribution of Cat Weights", x = "Weight", y = "Density") +
-  facet_wrap(~ Cat, ncol = 2, scales = "free_y") +
-  theme_bw()
+  #facet_wrap(~ Cat, ncol = 2, scales = "free_y") +
+  facet_wrap(~ Cat, ncol = 2, scales = "fixed") +
+  theme_bw() +
+  theme(legend.position = "bottom")
 
 ```
-
-#### Observations
-
-* **Gilbert**: The heaviest cat, averaging 12.5 lbs, Gilbert (aka Biralo) maintains a consistent weight (SD = 0.15 lbs). He is also the most frequent litter box user, averaging 30.9 visits per week. Although this usage is on the higher end of a healthy range, his consistent weight suggests that the Methimazole dosage (3.75 mg) is effective.
-
-* **Speck**: Weighing significantly less, averaging 8.2 lbs (SD = 0.17 lbs), Speck (aka Nunu) uses the litter box almost as frequently as Gilbert (29.8 visits/week). Although she exhibits consistent weight, this relatively high usage might warrant further observation.
-
-* **Catness**:  At an average of 10.1 lbs (SD = 0.17 lbs), Catness exhibits consistent weight and moderate litter box usage (21.5 visits/week). Although his usage is within the healthy range, it is on the extreme lower end and might warrant further observation.
-
-* **Frankie**: The second heaviest cat (11.6 lbs average, SD = 0.14 lbs) shows the lowest litter box usage (12.4 visits/week). While his consistent weight is a positive sign, the significantly low usage is concerning and warrants further investigation.
-
 
 <br>
 
@@ -227,18 +234,36 @@ The following plots visualize weekly changes in weight and litter box usage for 
 ggplot(weekly_stats, aes(x = Week, y = Avg_Weekly_Weight, color = Cat)) +
   geom_line() +
   geom_point() +
-  labs(title = "Average Weekly Weight", x = "Week", y = "Weight (lbs)")
+  labs(title = "Average Weekly Weight", x = "Week", y = "Weight (lbs)") +
+  theme(legend.position = "bottom")
 
 ```
 
-```{r, echo = FALSE, comparative-usage-plot}
+```{r, echo = FALSE, include = TRUE, comparative-usage-plot-3}
+last_week <- max(cat_data$Week) # Find the last (most likely incomplete) week.
 
-# Plot weekly litter box usage
-ggplot(weekly_stats, aes(x = Week, y = Mean_Daily_Visits, color = Cat)) +
+weekly_stats_complete <- weekly_stats %>%
+  filter(Week < last_week)  # Exclude the current week
+
+ggplot(weekly_stats_complete, aes(x = Week, y = Mean_Daily_Visits, color = Cat)) +
   geom_line() +
   geom_point() +
-  labs(title = "Mean Daily Litter Box Usage per Week", x = "Week", y = "Visits")
+  labs(title = "Mean Daily Litter Box Usage by Weekly Mean", x = "Week", y = "Visits") +
+  theme(legend.position = "bottom")
 
+```
+
+```{r, echo = FALSE, comparative-usage-plot-4}
+# Calculate daily visits
+daily_stats <- cat_data %>%
+  group_by(Cat, Date = as_date(Timestamp)) %>%  # Group by cat and date
+  summarize(Daily_Visits = n(), .groups = "drop")   # Count visits per day
+
+# Plot daily visits
+ggplot(daily_stats, aes(x = Date, y = Daily_Visits, color = Cat)) +
+  geom_smooth(method = "loess", formula = y ~ x, se = FALSE) + 
+  labs(title = "Litter Box Usage by Daily Mean", x = "Date", y = "Visits") +
+  theme(legend.position = "bottom")
 ```
 
 
@@ -276,6 +301,24 @@ for (cat_name in unique(cat_data$Cat)) {
   print(plot)
 }
 
+```
+
+```{r, echo = FALSE, individual-weight-plots-2}
+
+# Calculate global min and max weight
+min_weight <- min(cat_data$Weight)
+max_weight <- max(cat_data$Weight)
+
+# Create a single plot with all cats
+ggplot(cat_data, aes(x = Timestamp, y = Weight, color = Cat)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE, aes(group = Cat)) +  # Group by cat for separate lines
+  labs(title = "Weight Trends for All Cats", x = "Date", y = "Weight (lbs)") +
+  theme_bw() +
+  scale_y_continuous(limits = c(min_weight, max_weight)) +
+  scale_color_manual(values = c("Gilbert" = "blue", "Speck" = "purple", "Catness" = "red", "Frankie" = "green")) +
+  theme(legend.position = "bottom")
+
 #  /\_/\  
 # ( ^_^ ) 
 # (   "   )  
@@ -283,4 +326,3 @@ for (cat_name in unique(cat_data$Cat)) {
 #   ~~~~
 
 ```
-

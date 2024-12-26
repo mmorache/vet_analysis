@@ -1,25 +1,37 @@
 import pandas as pd
 
 class CatDataCleaner:
-    def __init__(self, input_file="litter_robot.csv", output_file="cat_weights.csv", year = '2024'):
-        self.input_file = input_file
+    def __init__(self, input_files=None, output_file="cat_weights.csv", year='2024'):
+        if input_files is None:
+            self.input_files = ["litter_robot_1.csv", "litter_robot_2.csv"]
+        else:
+            self.input_files = input_files
         self.output_file = output_file
         self.year = year
         self.df = None
 
     def _prep_raw(self):
-        self.df = pd.read_csv(self.input_file)
-        self.df['Timestamp'] = pd.to_datetime(self.df['Timestamp'] + ', 2024', format='%m/%d %I:%M%p, %Y')
-        self.df['Weight'] = self.df['Value'].str.replace(' lbs', '', regex=False).astype(float)
-        self.df = self.df.drop(["Activity", "Value"], axis=1)
+        dfs = []
+        for file in self.input_files:
+            df = pd.read_csv(file)
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'] + f', {self.year}', format='%m/%d %I:%M%p, %Y')
+            df['Weight'] = df['Value'].str.replace(' lbs', '', regex=False).astype(float)
+            df = df.drop(["Activity", "Value"], axis=1)
+            dfs.append(df)
+        self.df = pd.concat(dfs)
+        # Drop duplicates based on 'Timestamp' and keep the first occurrence
+        self.df = self.df.drop_duplicates(subset='Timestamp', keep='first')
 
     def _add_cats(self):
         self.df = self.df[(self.df['Weight'] >= 7.0) & (self.df['Weight'] <= 13.0)]
         self.df['Cat'] = 'undetermined'
-        self.df.loc[(self.df['Weight'] >= 12.2) & (self.df['Weight'] <= 12.9), 'Cat'] = 'Gilbert'
+        self.df.loc[(self.df['Weight'] >= 12.2) & (self.df['Weight'] <= 13.0), 'Cat'] = 'Gilbert'
         self.df.loc[(self.df['Weight'] >= 11.0) & (self.df['Weight'] <= 12.1), 'Cat'] = 'Frankie'
-        self.df.loc[(self.df['Weight'] >= 9.7) & (self.df['Weight'] <= 10.9), 'Cat'] = 'Catness'
+        self.df.loc[(self.df['Weight'] >= 9.6) & (self.df['Weight'] <= 10.9), 'Cat'] = 'Catness'
         self.df.loc[(self.df['Weight'] >= 7.7) & (self.df['Weight'] <= 8.9), 'Cat'] = 'Speck'
+
+    def _drop_undetermined(self):
+        self.df = self.df[self.df['Cat'] != 'undetermined']
 
 # TODO: this mess needs refactoring
     def _consolidate_weights(self):
@@ -59,6 +71,7 @@ class CatDataCleaner:
     def process_data(self):
         self._prep_raw()
         self._add_cats()
+        self._drop_undetermined() 
         self._consolidate_weights()
         self.df.to_csv(self.output_file, index=False)
 
