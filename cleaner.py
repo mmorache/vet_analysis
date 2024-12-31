@@ -3,7 +3,7 @@ import pandas as pd
 class CatDataCleaner:
     def __init__(self, input_files=None, output_file="cat_weights.csv", year='2024'):
         if input_files is None:
-            self.input_files = ["litter_robot_1.csv", "litter_robot_2.csv"]
+            self.input_files = ["litter_robot_1.csv", "litter_robot_2.csv", "litter_robot_3.csv"]
         else:
             self.input_files = input_files
         self.output_file = output_file

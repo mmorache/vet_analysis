@@ -1,6 +1,6 @@
 ---
 title: "Weight Trends and Litter Box Usage Patterns for the Morache Clowder"
-subtitle: "November 5th - December 26th, 2024"
+subtitle: "November 5th - December 31st, 2024"
 format: html
 ---
 
@@ -29,7 +29,7 @@ library(moments)
 
 ## Overview
 
-This report analyzes weight trends and litter box usage patterns for each of my four cats. The data was collected from a [Litter-Robot 4](https://www.litter-robot.com/) automatic litter box between November 5th and December 26th, 2024. 
+This report analyzes weight trends and litter box usage patterns for each of my four cats. The data was collected from a [Litter-Robot 4](https://www.litter-robot.com/) automatic litter box between November 5th and December 31st, 2024. 
 
 :::{#fig-cats layout-ncol="4"}
 :::{#fig-biralo}
