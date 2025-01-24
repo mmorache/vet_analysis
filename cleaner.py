@@ -1,26 +1,46 @@
 import pandas as pd
 
 class CatDataCleaner:
-    def __init__(self, input_files=None, output_file="cat_weights.csv", year='2024'):
+    def __init__(self, input_files=None, output_file="cat_weights.csv"):
         if input_files is None:
-            self.input_files = ["litter_robot_1.csv", "litter_robot_2.csv", "litter_robot_3.csv"]
+            self.input_files = [
+                "litter_robot_1.csv",
+                "litter_robot_2.csv",
+                "litter_robot_3.csv",
+                "litter_robot_4.csv",
+            ]
         else:
             self.input_files = input_files
         self.output_file = output_file
-        self.year = year
         self.df = None
+
+    def _get_year(self, month):
+        """Determine the year based on the month."""
+        if month in [11, 12]:
+            return 2024
+        return 2025
 
     def _prep_raw(self):
         dfs = []
         for file in self.input_files:
             df = pd.read_csv(file)
-            df['Timestamp'] = pd.to_datetime(df['Timestamp'] + f', {self.year}', format='%m/%d %I:%M%p, %Y')
+            # Extract month from the timestamp and determine the year
+            df['Month'] = pd.to_datetime(df['Timestamp'], format='%m/%d %I:%M%p').dt.month
+            df['Year'] = df['Month'].apply(self._get_year)
+
+            # Convert Timestamp with the determined year
+            df['Timestamp'] = pd.to_datetime(
+                df['Timestamp'] + ', ' + df['Year'].astype(str), format='%m/%d %I:%M%p, %Y'
+            )
+
             df['Weight'] = df['Value'].str.replace(' lbs', '', regex=False).astype(float)
-            df = df.drop(["Activity", "Value"], axis=1)
+            df = df.drop(["Activity", "Value", "Month", "Year"], axis=1)
             dfs.append(df)
+
         self.df = pd.concat(dfs)
         # Drop duplicates based on 'Timestamp' and keep the first occurrence
         self.df = self.df.drop_duplicates(subset='Timestamp', keep='first')
+
 
     def _add_cats(self):
         self.df = self.df[(self.df['Weight'] >= 7.0) & (self.df['Weight'] <= 13.0)]
