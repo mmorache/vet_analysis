@@ -50,8 +50,8 @@ class CatDataCleaner:
         self.df['Cat'] = 'undetermined'
         self.df.loc[(self.df['Weight'] >= 12.2) & (self.df['Weight'] <= 13.0), 'Cat'] = 'Gilbert'
         self.df.loc[(self.df['Weight'] >= 11.0) & (self.df['Weight'] <= 12.1), 'Cat'] = 'Frankie'
-        self.df.loc[(self.df['Weight'] >= 9.6) & (self.df['Weight'] <= 10.9), 'Cat'] = 'Catness'
-        self.df.loc[(self.df['Weight'] >= 7.7) & (self.df['Weight'] <= 8.9), 'Cat'] = 'Speck'
+        self.df.loc[(self.df['Weight'] >= 9.5) & (self.df['Weight'] <= 10.9), 'Cat'] = 'Catness'
+        self.df.loc[(self.df['Weight'] >= 7.5) & (self.df['Weight'] <= 8.9), 'Cat'] = 'Speck'
 
     def _drop_undetermined(self):
         self.df = self.df[self.df['Cat'] != 'undetermined']
