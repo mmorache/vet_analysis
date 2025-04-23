@@ -11,6 +11,7 @@ class CatDataCleaner:
                 "litter_robot_5.csv",
                 "litter_robot_6.csv",
                 "litter_robot_7.csv",
+                "litter_robot_8.csv"
             ]
         else:
             self.input_files = input_files
