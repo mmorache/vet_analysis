@@ -1,6 +1,6 @@
 ---
 title: "Weight Trends and Litter Box Usage Patterns for the Morache Clowder"
-subtitle: "From November 5th, 2024"
+subtitle: "Last Updated July 11, 2025"
 format: html
 ---
 
